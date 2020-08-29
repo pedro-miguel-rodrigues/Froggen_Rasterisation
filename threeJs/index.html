@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset=utf-8>
+		<title>PhongLightTest</title>
+		<style>
+			body { margin: 0; overflow: hidden; }
+			canvas { width: 100%; height: 100% }
+		</style>
+	</head>
+	<body>
+		<!-- ThreeJS -->
+		<script src="js/three.js"></script>
+		<script src="js/loaders/TGALoader.js"></script>
+		<script src="js/utils/BufferGeometryUtils.js"></script>
+		<script src="js/utils/Reflector.js"></script>
+		<script src="js/utils/Lensflare.js"></script>
+		<script src="js/utils/OrbitControls.js"></script>
+
+		<!-- Shaders -->
+		<script type="text/javascript">
+			var vertexShader = `
+			#define FOG_EXP2 1
+			#define USE_FOG 1
+
+			${THREE.ShaderChunk[ "common" ]}
+
+			attribute vec4 tangent;
+
+			varying vec2 vUv;
+			varying vec3 lightVec, halfVec;
+		
+			${THREE.ShaderChunk[ "fog_pars_vertex" ]}
+			
+			void main() {
+				vUv = uv;
+
+				// Building the matrix Eye Space -> Tangent Space
+				vec3 n = normalize(normalMatrix * normal.xyz);
+				vec3 t = normalize(normalMatrix * tangent.xyz);
+				vec3 b = cross(n, t); // maybe we only need cross(n, t);
+
+				vec3 lightSource_pos = vec3(200, 200, 200);
+
+				vec3 eye_vPosition = vec3(modelViewMatrix * vec4(position, 1.0));
+				vec3 lightDir = normalize(lightSource_pos - eye_vPosition);
+				
+				// transform light and half angle vectors by tangent basis
+				vec3 v;
+				v.x = dot(lightDir, t);
+				v.y = dot(lightDir, b);
+				v.z = dot(lightDir, n);
+				lightVec = normalize(v);
+
+				vec3 halfVector = normalize(lightDir - eye_vPosition);
+				v.x = dot(halfVector, t);
+				v.y = dot(halfVector, b);
+				v.z = dot(halfVector, n);
+				halfVec = normalize (v);
+
+				vec4 mvPosition = modelViewMatrix * vec4(position,1.0);
+				gl_Position = projectionMatrix * mvPosition;
+
+				${THREE.ShaderChunk[ "fog_vertex" ]}
+				
+			}`
+		</script>
+		<script type="text/javascript">
+		var fragmentShader = `
+			#define FOG_EXP2 1
+			#define USE_FOG 1
+
+			${THREE.ShaderChunk[ "common" ]}
+
+			${THREE.ShaderChunk[ "fog_pars_fragment" ]}
+
+			struct Material {
+				vec4 diffuse;
+				vec4 specular;
+				float shininess;
+				bool twoTextures;
+			};
+
+			struct LightSource {
+				vec4 diffuse;
+				vec4 ambient;
+				vec4 specular;
+			};
+
+			uniform sampler2D texture1;
+			uniform sampler2D texture2;
+			uniform sampler2D bumpMap;
+		
+			varying vec2 vUv;
+			varying vec3 lightVec, halfVec;
+			varying vec4 pos;
+			uniform Material material;
+
+			uniform bool enableFog;
+			
+
+			void main() {
+
+				// lookup normal from normal map, move from [0,1] to [-1, 1] range, normalize
+				vec3 normal = 2.0 * texture2D (bumpMap, vUv).rgb - 1.0;
+				normal = normalize (normal);
+
+				// compute diffuse lighting
+				float lambertFactor = max (dot (lightVec, normal), 0.0) ;
+				
+				vec4 diffuseMaterial;
+				vec4 diffuseLight;
+				float shininess;
+				
+				LightSource lightSource = LightSource(vec4(1,1,1,1), vec4(1,1,1,1)*0.1, vec4(1,1,1,1));
+
+				
+				vec4 textMixture =
+					material.twoTextures
+						? (0.5 *texture2D(texture1, vUv)) + (0.5 * texture2D(texture2, vUv))
+						: texture2D(texture1, vUv);
+					
+				if (lambertFactor > 0.0){
+					diffuseMaterial = textMixture * material.diffuse;
+					shininess = pow (max (dot (halfVec, normal), 0.0), material.shininess) ;
+					gl_FragColor = diffuseMaterial * lightSource.diffuse * lambertFactor ;
+					gl_FragColor += material.specular * lightSource.specular * shininess ;
+				}
+				gl_FragColor += lightSource.ambient;
+				gl_FragColor.a = material.diffuse.a;
+
+				if(enableFog) {
+					${THREE.ShaderChunk[ "fog_fragment" ]}		
+				}
+			}`
+		</script>
+		
+
+		<!-- Models -->
+		<script src="js/GameObject.js"></script>
+		<script src="js/MovableObject.js"></script>
+		<script src="js/SolidObject.js"></script>
+		<script src="js/boundingBoxes.js"></script>
+
+		<script src="js/Table.js"></script>
+		<script src="js/TableDown.js"></script>
+		<script src="js/Mirror.js"></script>
+		<script src="js/Log.js"></script>
+		<script src="js/Car.js"></script>
+		<script src="js/Truck.js"></script>
+		<script src="js/Turtle.js"></script>
+		<script src="js/Cheerio.js"></script>
+		<script src="js/Frog.js"></script>
+		<script src="js/Butter.js"></script>
+		<script src="js/Candle.js"></script>
+		<script src="js/Flag.js"></script>
+		<script src="js/ParticleSystem.js"></script>
+		<script src="js/ui_elements.js"></script>
+
+		<!-- Crazy cams. Disregard this -->
+		<script src="js/movie.js"></script>
+
+		<!-- Initialize -->
+		<script src="js/main.js"></script>
+
+		<button onclick="STEREO_ON = !STEREO_ON; setStereo()" style="position: absolute; top: 10px; left: 10px"> TOGGLE STEREO </button>
+
+		<button type="button" id="score" style="position: absolute; top: 50px; left: 40px" >0</button>
+
+
+	</body>
+</html>
