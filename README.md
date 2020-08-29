@@ -1,5 +1,5 @@
 # Froggen_Rasterisation
-For the subjet Three-Dimensional Vizualization and Animation we had to develop the game Froggen using moden OpenGL
+For the subjet Three-Dimensional Vizualization and Animation we had to develop the game Froggen using modern OpenGL
 
 **Techniques used in these project**
 
